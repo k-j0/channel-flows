@@ -21,21 +21,35 @@
             padding: 0;
             border: none;
         }
+        span {
+            position: fixed;
+            z-index: 99;
+            color: white;
+            text-shadow: 1px 1px 0 black, -1px 1px 0 black, -1px -1px 0 black, 1px -1px 0 black, 1px 0 0 black, -1px 0 0 black, 0 1px 0 black, 0 -1px 0 black;
+            left: 10px;
+            top: 10px;
+        }
     </style>
 </head>
 <body>
+    <span id='stats'></span>
     <script>
         (async () => {
+
+            const showVelocity = true;
 
             // Simulation parameters
             let simParams = new D2Q9.Parameters();
             simParams.width = 20;
-            simParams.height = 20;
+            simParams.height = 100;
             simParams.kinematicViscosity = 0.5;
             simParams.initialDensity = 1.0;
             simParams.force = new THREE.Vector2(5e-8, 0);
 
 
+
+            // Utility function to clamp between two values
+            const clamp = (v, m, M) => Math.min(Math.max(v, m), M);
 
             // Initialise Three.js renderer
             const width = window.innerWidth;
@@ -57,8 +71,7 @@
             plane.position.z = -1;
             scene.add(plane);
 
-            // Render initial state (black)
-            renderer.render(scene, camera);
+            // Render function
             const refresh = () => {
                 texture.needsUpdate = true;
                 renderer.render(scene, camera);
@@ -66,6 +79,9 @@
 
             // Init simulation
             let sim = new D2Q9(simParams);
+            // Top and bottom boundaries
+            sim.addHorizontalBoundary(0);
+            sim.addHorizontalBoundary(simParams.height - 1);
 
             // Simulation loop
             (update = () => {
@@ -73,20 +89,31 @@
                 // further the sim
                 sim.step();
 
+                // update UI
+                document.getElementById('stats').innerHTML =
+                        't = ' + sim.t + '<br/>' +
+                        'ρ = ' + sim.density.toFixed(2) + '<br/>' +
+                        'u = (' + sim.velocity.x.toFixed(2) + ', ' + sim.velocity.y.toFixed(2) + ')';
+
                 // update texture with site densities & velocities
                 for(let x = 0; x < simParams.width; ++x) {
                     for(let y = 0; y < simParams.height; ++y) {
                         let idx = (x + y * simParams.width) * 3;
-                        let site = sim.getSite(x, y, true);
-                        data[idx] = site.density * 255;
-                        data[idx+1] = data[idx];//site.velocity.x * 255;
-                        data[idx+2] = data[idx];//site.velocity.y * 255;
+                        let site = sim.getSite(x, y);
+                        if (site.boundary) {
+                            data[idx] = data[idx+1] = data[idx+2] = 0; continue;
+                        }
+                        data[idx] = clamp(site.density * 70, 0, 255);
+                        if (showVelocity) {
+                            data[idx] = clamp(site.velocity.x * 130, 0, 255);
+                        }
+                        data[idx+2] = data[idx+1] = data[idx];
                     }
                 }
                 refresh();
 
                 requestAnimationFrame(update);
-                //setTimeout(update, 500); // slow step-by-step simulation
+                //setTimeout(update, 100); // slow step-by-step simulation
             })();
 
         })();
