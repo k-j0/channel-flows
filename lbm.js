@@ -44,7 +44,9 @@ class D2Q9 {
     static NiEq (i, density, velocity) {
         let uDotU = velocity.dot(velocity); // u • u
         let ciDotU = D2Q9.C[i].dot(velocity); // c_i • u
-        return D2Q9.W[i] * density * (1.0 + 3.0 * ciDotU + 4.5 * ciDotU * ciDotU - 1.5 * uDotU);
+        let niEq = D2Q9.W[i] * density * (1.0 + 3.0 * ciDotU + 4.5 * ciDotU * ciDotU - 1.5 * uDotU);
+        if (niEq < 0) return 0; // cap at 0
+        return niEq;
     }
 
     /**
@@ -141,7 +143,7 @@ class D2Q9 {
                 this.density += this.n[i];
                 this.velocity.addScaledVector(D2Q9.C[i], this.n[i]); // ρu = sum_i( c_i * N_i )
             }
-            this.velocity.x += 1e-2; // horizontal pressure gradient; TODO remove this
+            this.velocity.x += 5e-3; // horizontal pressure gradient; TODO remove this
             this.velocity.multiplyScalar(1.0 / this.density); // ρu = sum_i( c_i * N_i ) hence u = sum_i(c_i * N_i ) / ρ
 
             // collision step for the site
@@ -224,6 +226,25 @@ class D2Q9 {
     addHorizontalBoundary(y) {
         for(let x = 0; x < this.width; ++x) {
             this.addBoundary(x, y);
+        }
+    }
+
+    /**
+     * Adds a circular bounce-back boundary for sites centred at x, y with radius r
+     * 
+     * @param {int} x X-coordinate of the centre of the circle
+     * @param {int} y Y-coordinate of the centre of the circle
+     * @param {float} r Radius of the circle 
+     */
+    addCircularBoundary(x, y, r) {
+        for(let u = 0; u < this.width; ++u) {
+            for(let v = 0; v < this.height; ++v) {
+                let dx = x - u;
+                let dy = y - v;
+                if (dx*dx + dy*dy <= r*r) {
+                    this.addBoundary(u, v);
+                }
+            }
         }
     }
 
@@ -319,6 +340,32 @@ class D2Q9 {
 
         // t -> t+1
         ++this.t;
+
+    }
+
+
+    /**
+     * Plots the x velocity as a function of y (across channel)
+     * 
+     * @param {string} colour Colour to use on the chart
+     */
+    plotXVelocity (colour = 'black') {
+
+        let labels = [];
+        let data = [];
+
+        for (let y = 0; y < this.height; ++y) {
+            // average through channel
+            let velX = 0;
+            for (let x = 0; x < this.width; ++x) {
+                velX += this.getSite(x, y).velocity.x;
+            }
+            velX /= this.width;
+            labels.push(y);
+            data.push(velX);
+        }
+
+        plot(labels, data, 'Velocity across channel at t = ' + this.t, colour);
 
     }
 

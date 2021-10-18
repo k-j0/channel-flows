@@ -9,7 +9,11 @@
     <!-- Include Three.js -->
     <script src='https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js'></script>
 
-    <!-- Include lbm  -->
+    <!-- Include Chart.js -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@3.5.1/dist/chart.min.js"></script>
+
+    <!-- Include source files  -->
+    <script src='plots.js'></script>
     <script src='lbm.js'></script>
     
     <style>
@@ -20,6 +24,7 @@
             margin: 0;
             padding: 0;
             border: none;
+            background: grey;
         }
         span {
             position: fixed;
@@ -52,10 +57,11 @@
             const clamp = (v, m, M) => Math.min(Math.max(v, m), M);
 
             // Initialise Three.js renderer
-            const width = window.innerWidth;
-            const height = window.innerHeight;
+            const width = window.innerWidth * 0.9;
+            const height = simParams.width * width / simParams.height;
             const renderer = new THREE.WebGLRenderer({ antialias: true });
             renderer.setSize(width, height);
+            renderer.domElement.style.margin = '20px auto';
             document.body.appendChild(renderer.domElement);
             const camera = new THREE.OrthographicCamera(-0.5, 0.5, 0.5, -0.5, 0.1, 10); // x=-0.5..0.5, y=-0.5..0.5 view
 
@@ -88,6 +94,9 @@
 
                 // further the sim
                 sim.step();
+
+                // plot velocity after 2000 iterations
+                if (sim.t == 2000) sim.plotXVelocity();
 
                 // update UI
                 document.getElementById('stats').innerHTML =
