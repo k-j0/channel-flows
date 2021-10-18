@@ -58,7 +58,7 @@
 
             // Initialise Three.js renderer
             const width = window.innerWidth * 0.9;
-            const height = simParams.width * width / simParams.height;
+            const height = width * 0.2;
             const renderer = new THREE.WebGLRenderer({ antialias: true });
             renderer.setSize(width, height);
             renderer.domElement.style.margin = '20px auto';
