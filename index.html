@@ -12,9 +12,12 @@
     <!-- Include Chart.js -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js@3.5.1/dist/chart.min.js"></script>
 
-    <!-- Include source files  -->
+    <!-- Include utilities  -->
     <script src='plots.js'></script>
     <script src='renderer.js'></script>
+    <script src='ui.js'></script>
+
+    <!-- Include lattice boltzmann source -->
     <script src='lbm.js'></script>
     
     <style>
@@ -59,14 +62,14 @@
             sim.addHorizontalBoundary(0);
             sim.addHorizontalBoundary(simParams.height - 1);
 
+            // Add capture button
+            button('Capture velocity profile', () => sim.plotXVelocity());
+
             // Simulation loop
             (update = () => {
 
                 // further the sim
                 sim.step();
-
-                // plot velocity after 1000 iterations
-                if (sim.t == 1000) sim.plotXVelocity();
 
                 // update on-screen UI
                 document.getElementById('stats').innerHTML =

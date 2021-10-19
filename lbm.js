@@ -116,7 +116,7 @@ class D2Q9 {
 
         
         /**
-         * Default constructor, initialises the sites with initial density
+         * Default constructor, initialises the sites with initial density and 0 velocity
          * 
          * @param {number} density Initial density at the site
          */
@@ -129,7 +129,7 @@ class D2Q9 {
 
         /**
          * Collision step; updates density and velocity based on Ni values
-         * Updates ρ and u then Ni vals (nt)
+         * Updates ρ & u for the site, then its Ni vals (into nt instead of n)
          * 
          * @param {float} omega The relaxation time inverse omega used for the simulation
          * @param {THREE.Vector2} force Forcing to add to the particles
