@@ -69,11 +69,14 @@
                 stop = !stop;
                 update();
             });
+            button('Single step', () => {
+                stop = true;
+                update();
+            });
             button('Start over', () => window.location.reload());
 
             // Simulation loop
             (update = () => {
-                if(stop) return;
 
                 // further the sim
                 sim.step();
@@ -90,6 +93,8 @@
                     if(site.boundary) return 0;
                     return site.velocity.x;
                 });
+                
+                if(stop) return;
 
                 requestAnimationFrame(update);
             })();
