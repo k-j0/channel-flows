@@ -283,12 +283,12 @@ class D2Q9 {
                     this.velocity.add(site.velocity);
                 }
                 
-                // skip fluid sites for bounce-back
-                if (!site.boundary) continue;
-
                 // half-way bounce-back
-                for (let i = 0; i < 9; ++i) {
-                    site.nt[i] = site.n[D2Q9.opposite(i)];
+                // skip fluid sites for bounce-back
+                if (site.boundary) {
+                    for (let i = 0; i < 9; ++i) {
+                        site.nt[i] = site.n[D2Q9.opposite(i)];
+                    }
                 }
             }
         }
