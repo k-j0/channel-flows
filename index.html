@@ -14,6 +14,7 @@
 
     <!-- Include source files  -->
     <script src='plots.js'></script>
+    <script src='renderer.js'></script>
     <script src='lbm.js'></script>
     
     <style>
@@ -45,43 +46,13 @@
 
             // Simulation parameters
             let simParams = new D2Q9.Parameters();
-            simParams.width = 20;
-            simParams.height = 100;
+            simParams.width = 30;
+            simParams.height = 30;
             simParams.kinematicViscosity = 0.5;
             simParams.initialDensity = 1.0;
             simParams.force = new THREE.Vector2(5e-8, 0);
 
-
-
-            // Utility function to clamp between two values
-            const clamp = (v, m, M) => Math.min(Math.max(v, m), M);
-
-            // Initialise Three.js renderer
-            const width = window.innerWidth * 0.9;
-            const height = width * 0.2;
-            const renderer = new THREE.WebGLRenderer({ antialias: true });
-            renderer.setSize(width, height);
-            renderer.domElement.style.margin = '20px auto';
-            document.body.appendChild(renderer.domElement);
-            const camera = new THREE.OrthographicCamera(-0.5, 0.5, 0.5, -0.5, 0.1, 10); // x=-0.5..0.5, y=-0.5..0.5 view
-
-            // Create data texture to hold results
-            const data = new Uint8Array(3 * simParams.width * simParams.height);
-            const texture = new THREE.DataTexture(data, simParams.width, simParams.height, THREE.RGBFormat);
-
-            // Show texture on 0..1 plane mesh
-            const scene = new THREE.Scene();
-            const plane = new THREE.Mesh(new THREE.PlaneGeometry(1, 1), new THREE.MeshBasicMaterial({
-                map: texture // bind data texture to plane mesh
-            }));
-            plane.position.z = -1;
-            scene.add(plane);
-
-            // Render function
-            const refresh = () => {
-                texture.needsUpdate = true;
-                renderer.render(scene, camera);
-            };
+            let renderer = new Renderer(simParams.width, simParams.height);
 
             // Init simulation
             let sim = new D2Q9(simParams);
@@ -95,31 +66,24 @@
                 // further the sim
                 sim.step();
 
-                // plot velocity after 2000 iterations
-                if (sim.t == 2000) sim.plotXVelocity();
+                // plot velocity after 1000 iterations
+                if (sim.t == 1000) sim.plotXVelocity();
 
-                // update UI
+                // update on-screen UI
                 document.getElementById('stats').innerHTML =
                         't = ' + sim.t + '<br/>' +
                         'ρ = ' + sim.density.toFixed(2) + '<br/>' +
                         'u = (' + sim.velocity.x.toFixed(2) + ', ' + sim.velocity.y.toFixed(2) + ')';
 
-                // update texture with site densities & velocities
-                for(let x = 0; x < simParams.width; ++x) {
-                    for(let y = 0; y < simParams.height; ++y) {
-                        let idx = (x + y * simParams.width) * 3;
-                        let site = sim.getSite(x, y);
-                        if (site.boundary) {
-                            data[idx] = data[idx+1] = data[idx+2] = 0; continue;
-                        }
-                        data[idx] = clamp(site.density * 70, 0, 255);
-                        if (showVelocity) {
-                            data[idx] = clamp(site.velocity.x * 130, 0, 255);
-                        }
-                        data[idx+2] = data[idx+1] = data[idx];
+                // update texture with site densities or velocities
+                renderer.render((x, y) => {
+                    let site = sim.getSite(x, y);
+                    if (showVelocity) {
+                        return site.velocity * 130;
+                    } else {
+                        return site.density * 70;
                     }
-                }
-                refresh();
+                });
 
                 requestAnimationFrame(update);
                 //setTimeout(update, 100); // slow step-by-step simulation
