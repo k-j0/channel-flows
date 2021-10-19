@@ -65,7 +65,10 @@
             // Add capture button
             button('Capture velocity profile', () => sim.plotXVelocity());
             let stop = false;
-            button('Stop simulation', () => stop = true);
+            button('Pause/resume simulation', () => {
+                stop = !stop;
+                update();
+            });
             button('Start over', () => window.location.reload());
 
             // Simulation loop
