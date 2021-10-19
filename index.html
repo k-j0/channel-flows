@@ -64,9 +64,13 @@
 
             // Add capture button
             button('Capture velocity profile', () => sim.plotXVelocity());
+            let stop = false;
+            button('Stop simulation', () => stop = true);
+            button('Start over', () => window.location.reload());
 
             // Simulation loop
             (update = () => {
+                if(stop) return;
 
                 // further the sim
                 sim.step();
@@ -81,11 +85,10 @@
                 renderer.render((x, y) => {
                     let site = sim.getSite(x, y);
                     if(site.boundary) return 0;
-                    return site.velocity.x * 5e4;
+                    return site.velocity.x;
                 });
 
                 requestAnimationFrame(update);
-                //setTimeout(update, 100); // slow step-by-step simulation
             })();
 
         })();
