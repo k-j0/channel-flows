@@ -52,13 +52,36 @@ class Renderer {
      * Refreshes the render by updating the texture
      */
     render(updateCallback) {
-        // Update all of the image's pixels
+        // Gather values to show
+        let tmp = [];
+        let min = Number.POSITIVE_INFINITY;
+        let max = Number.NEGATIVE_INFINITY;
+        for(let x = 0; x < this.width; ++x) {
+            for(let y = 0; y < this.height; ++y) {
+                let val = updateCallback(x, y) * 255;
+                tmp.push(val);
+                if(val < min) min = val;
+                if(val > max) max = val;
+            }
+        }
+        // Update texture data buffer with remapped values, mapped to a nice blue colour gradient
+        let colours = [
+            new THREE.Color('#001D3A'),
+            new THREE.Color('#5A8AA6'),
+            new THREE.Color('#E3FFFF')
+        ];
         for(let x = 0; x < this.width; ++x) {
             for(let y = 0; y < this.height; ++y) {
                 let idx = (x + y * this.width) * 3;
-                let val = updateCallback(x, y) * 255; // obtain pixel value
-                val = Math.min(Math.max(val, 0), 255); // clamp to 0..255
-                this.data[idx] = this.data[idx+1] = this.data[idx+2] = val;
+                let val = tmp.shift();
+                val = (val - min) / (max - min); // remap to 0..1 no matter what
+                // apply colour map
+                val *= (colours.length - 1) * 0.999;
+                let colourIdx = parseInt(val);
+                let col = (new THREE.Color()).lerpColors(colours[colourIdx], colours[colourIdx+1], val - colourIdx);
+                this.data[idx] = col.r * 255;
+                this.data[idx+1] = col.g * 255;
+                this.data[idx+2] = col.b * 255;
             }
         }
         this.refresh();
