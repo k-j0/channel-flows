@@ -75,10 +75,13 @@ class Renderer {
                 let idx = (x + y * this.width) * 3;
                 let val = tmp.shift();
                 val = (val - min) / (max - min); // remap to 0..1 no matter what
+                let col = colours[colours.length - 1];
                 // apply colour map
-                val *= (colours.length - 1) * 0.999;
-                let colourIdx = parseInt(val);
-                let col = (new THREE.Color()).lerpColors(colours[colourIdx], colours[colourIdx+1], val - colourIdx);
+                if (val < 1.0) {
+                    val *= colours.length - 1;
+                    let colourIdx = Math.floor(val);
+                    col = (new THREE.Color()).lerpColors(colours[colourIdx], colours[colourIdx+1], val - colourIdx);
+                }
                 this.data[idx] = col.r * 255;
                 this.data[idx+1] = col.g * 255;
                 this.data[idx+2] = col.b * 255;

@@ -45,15 +45,23 @@
     <script>
         (async () => {
 
+            const pulsatile = true;
+
             // Simulation parameters
             let simParams = new D2Q9.Parameters();
-            simParams.width = 20;
-            simParams.height = 20;
+            simParams.width = 100;
+            simParams.height = 100;
             simParams.kinematicViscosity = 0.5;
             simParams.initialDensity = 1.0;
-            simParams.force = new THREE.Vector2(5e-8, 0);
+            if (!pulsatile) {
+                // constant acceleration
+                simParams.force = (time) => new THREE.Vector2(5e-8, 0);
+            } else {
+                // pulsatile (time-dependent) force
+                simParams.force = (time) => new THREE.Vector2(5e-8 * Math.cos(0.01 * time), 0);
+            }
 
-            
+
             // Init 2D renderer
             let renderer = new Renderer(simParams.width, simParams.height);
 
@@ -77,6 +85,14 @@
                 stop = true;
                 update();
             });
+            button('10 steps', () => {
+                stop = true;
+                for(let i = 0; i < 10; ++i) update();
+            });
+            button('100 steps', () => {
+                stop = true;
+                for(let i = 0; i < 100; ++i) update();
+            });
             button('Start over', () => window.location.reload());
 
 
@@ -96,7 +112,7 @@
                 renderer.render((x, y) => {
                     let site = sim.getSite(x, y);
                     if(site.boundary) return 0;
-                    return site.velocity.x;
+                    return Math.abs(site.velocity.x);
                 });
 
                 if(stop) return;

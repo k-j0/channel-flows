@@ -71,7 +71,7 @@ class D2Q9 {
         height = 20; // int, number of sites across the lattice vertically
         kinematicViscosity = 0.5; // float
         initialDensity = 1.0; // float
-        force = new THREE.Vector2(0, 0); // force to apply to the simulation
+        force = (time) => new THREE.Vector2(0, 0); // force to apply to the simulation; function: float time -> THREE.Vector2
     }; // class Parameters
 
     /**
@@ -132,7 +132,7 @@ class D2Q9 {
          * Updates ρ & u for the site, then its Ni vals (into nt instead of n)
          * 
          * @param {float} omega The relaxation time inverse omega used for the simulation
-         * @param {THREE.Vector2} force Forcing to add to the particles
+         * @param {THREE.Vector2} force Force to add to the particles
          */
         collision(omega, force) {
 
@@ -180,7 +180,7 @@ class D2Q9 {
 
     /// Simulation parameters
     omega; // float
-    force; // THREE.Vector2
+    force; // function: float time -> THREE.Vector2
 
     /// Array of individual lattice sites
     sites; // D2Q9.Site[]
@@ -267,6 +267,7 @@ class D2Q9 {
         this.velocity.set(0, 0);
 
         // Collision step + boundary conditions
+        let f = this.force(this.t);
         for (let x = 0; x < this.width; ++x) {
             for (let y = 0; y < this.height; ++y) {
 
@@ -274,7 +275,7 @@ class D2Q9 {
                 let site = this.getSite(x, y);
 
                 // collision step for the site
-                site.collision(this.omega, this.force);
+                site.collision(this.omega, f);
 
                 // Compute avg density and velocity across lattice
                 // This isn't required, but we want to display it on screen
