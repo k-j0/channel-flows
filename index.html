@@ -64,6 +64,7 @@
 
             // Add capture button
             button('Capture velocity profile', () => sim.plotXVelocity());
+            button('Capture occupations', () => sim.plotOccupations());
             let stop = false;
             button('Pause/resume simulation', () => {
                 stop = !stop;
@@ -93,7 +94,7 @@
                     if(site.boundary) return 0;
                     return site.velocity.x;
                 });
-                
+
                 if(stop) return;
 
                 requestAnimationFrame(update);
