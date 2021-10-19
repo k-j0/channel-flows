@@ -44,9 +44,9 @@ class D2Q9 {
     static NiEq (i, density, velocity) {
         let uDotU = velocity.dot(velocity); // u • u
         let ciDotU = D2Q9.C[i].dot(velocity); // c_i • u
-        let niEq = D2Q9.W[i] * density * (1.0 + 3.0 * ciDotU + 4.5 * ciDotU * ciDotU - 1.5 * uDotU);
-        if (niEq < 0) return 0; // cap at 0
-        return niEq;
+        let nieq = D2Q9.W[i] * density * (1.0 + 3.0 * ciDotU + 4.5 * ciDotU * ciDotU - 1.5 * uDotU);
+        if (nieq < 0) return 0; // would only happen due to numerical imprecisions
+        return nieq;
     }
 
     /**
@@ -143,22 +143,30 @@ class D2Q9 {
                 this.density += this.n[i];
                 this.velocity.addScaledVector(D2Q9.C[i], this.n[i]); // ρu = sum_i( c_i * N_i )
             }
-            this.velocity.x += 5e-3; // horizontal pressure gradient; TODO remove this
             this.velocity.multiplyScalar(1.0 / this.density); // ρu = sum_i( c_i * N_i ) hence u = sum_i(c_i * N_i ) / ρ
 
             // collision step for the site
-            let F = force.clone();
-            F.multiplyScalar(this.density);
+            let F = new THREE.Vector2(force.x, force.y);
+            F.x *= this.density;
+            F.y *= this.density;
             for(let i = 0; i < 9; ++i) {
                 let Nieq = D2Q9.NiEq(i, this.density, this.velocity);
                 // Ni = Ni - omega * (Ni - Ni^eq)
                 // i.e. Ni = lerp(Ni, Ni^eq, omega)
-                this.nt[i] = (1.0 - omega) * this.n[i] + omega * Nieq;
-                if (this.nt[i] < 0) {
-                    this.nt[i] = 0;
-                }
-                // add forcing term   3 Wi Ci • F   with   F = ρf
-                //this.n[i] += 3.0 * D2Q9.W[i] * D2Q9.C[i].dot(F); // <- TODO add this back in!
+                // + add forcing term   3 Wi Ci • F   with   F = ρf
+                let forcingTerm = 3.0 * D2Q9.W[i] * D2Q9.C[i].dot(F);
+                this.nt[i] = this.n[i] - omega * (this.n[i] - Nieq) + forcingTerm;
+                if(this.nt[i] < 0) this.nt[i] = 0; // only due to numerical imprecisions
+            }
+        }
+
+        /**
+         * Make the site into a boundary/obstacle
+         */
+        setBoundary() {
+            this.boundary = true;
+            for (let i = 0; i < 9; ++i) {
+                this.n[i] = 0;
             }
         }
 
@@ -206,26 +214,13 @@ class D2Q9 {
     }
 
     /**
-     * Adds a boundary on a single site
-     * 
-     * @param {int} x X-coordinate of the site to make into a boundary site
-     * @param {int} y Y-coordinate of the site to make into a boundary site
-     */
-    addBoundary (x, y) {
-        this.getSite(x, y).boundary = true;
-        for (let i = 0; i < 9; ++i) {
-            this.getSite(x, y).n[i] = 0;
-        }
-    }
-
-    /**
      * Adds a horizontal bounce-back boundary for sites at y
      * 
      * @param {int} y Y-coordinate of sites to make into boundaries
      */
     addHorizontalBoundary(y) {
         for(let x = 0; x < this.width; ++x) {
-            this.addBoundary(x, y);
+            this.getSite(x, y).setBoundary();
         }
     }
 
@@ -242,7 +237,7 @@ class D2Q9 {
                 let dx = x - u;
                 let dy = y - v;
                 if (dx*dx + dy*dy <= r*r) {
-                    this.addBoundary(u, v);
+                    this.getSite(u, v).setBoundary();
                 }
             }
         }
@@ -277,36 +272,13 @@ class D2Q9 {
 
                 // get site to update
                 let site = this.getSite(x, y);
-                
-                // skip calculations for obstacle sites
-                if (site.boundary) continue;
 
                 // collision step for the site
                 site.collision(this.omega, this.force);
             }
         }
 
-        // Propagation step
-        for (let x = 0; x < this.width; ++x) {
-            for (let y = 0; y < this.height; ++y) {
-
-                // get site to update
-                let site = this.getSite(x, y);
-
-                // skip boundary sites
-                if (site.boundary) continue;
-
-                // stream particle distribs from neighbours
-                for (let i = 0; i < 9; ++i) {
-                    let dx = D2Q9.C[i].x;
-                    let dy = D2Q9.C[i].y;
-                    site.n[i] = this.getSite(x + dx, y + dy).nt[i];
-                }
-
-            }
-        }
-
-        // Bounce-back boundary conditions
+        // Bounce-back boundary condition
         for (let x = 0; x < this.width; ++x) {
             for (let y = 0; y < this.height; ++y) {
 
@@ -318,10 +290,25 @@ class D2Q9 {
 
                 // half-way bounce-back
                 for (let i = 0; i < 9; ++i) {
-                    let dx = -D2Q9.C[i].x;
-                    let dy = -D2Q9.C[i].y;
-                    site.n[i] = this.getSite(x + dx, y + dy).n[D2Q9.opposite(i)];
+                    site.nt[i] = site.n[D2Q9.opposite(i)];
                 }
+            }
+        }
+
+        // Propagation/streaming step
+        for (let x = 0; x < this.width; ++x) {
+            for (let y = 0; y < this.height; ++y) {
+
+                // get site to update
+                let site = this.getSite(x, y);
+
+                // stream particle distribs from neighbours
+                for (let i = 0; i < 9; ++i) {
+                    let dx = D2Q9.C[i].x;
+                    let dy = D2Q9.C[i].y;
+                    site.n[i] = this.getSite(x + dx, y + dy).nt[i];
+                }
+
             }
         }
 
@@ -330,6 +317,7 @@ class D2Q9 {
             for (let y = 0; y < this.height; ++y) {
 
                 let site = this.getSite(x, y);
+                if(site.boundary) continue;
                 this.density += site.density;
                 this.velocity.add(site.velocity);
 
@@ -358,7 +346,10 @@ class D2Q9 {
             // average through channel
             let velX = 0;
             for (let x = 0; x < this.width; ++x) {
-                velX += this.getSite(x, y).velocity.x;
+                let site = this.getSite(x, y);
+                if(!site.boundary) {
+                    velX += site.velocity.x;
+                }
             }
             velX /= this.width;
             labels.push(y);

@@ -56,7 +56,7 @@ class Renderer {
         for(let x = 0; x < this.width; ++x) {
             for(let y = 0; y < this.height; ++y) {
                 let idx = (x + y * this.width) * 3;
-                let val = updateCallback(x, y); // obtain pixel value
+                let val = updateCallback(x, y) * 255; // obtain pixel value
                 val = Math.min(Math.max(val, 0), 255); // clamp to 0..255
                 this.data[idx] = this.data[idx+1] = this.data[idx+2] = val;
             }

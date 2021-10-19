@@ -42,12 +42,10 @@
     <script>
         (async () => {
 
-            const showVelocity = true;
-
             // Simulation parameters
             let simParams = new D2Q9.Parameters();
-            simParams.width = 30;
-            simParams.height = 30;
+            simParams.width = 20;
+            simParams.height = 20;
             simParams.kinematicViscosity = 0.5;
             simParams.initialDensity = 1.0;
             simParams.force = new THREE.Vector2(5e-8, 0);
@@ -74,16 +72,13 @@
                 document.getElementById('stats').innerHTML =
                         't = ' + sim.t + '<br/>' +
                         'ρ = ' + sim.density.toFixed(2) + '<br/>' +
-                        'u = (' + sim.velocity.x.toFixed(2) + ', ' + sim.velocity.y.toFixed(2) + ')';
+                        'u = (' + sim.velocity.x.toFixed(7) + ', ' + sim.velocity.y.toFixed(7) + ')';
 
                 // update texture with site densities or velocities
                 renderer.render((x, y) => {
                     let site = sim.getSite(x, y);
-                    if (showVelocity) {
-                        return site.velocity * 130;
-                    } else {
-                        return site.density * 70;
-                    }
+                    if(site.boundary) return 0;
+                    return site.velocity.x * 5e4;
                 });
 
                 requestAnimationFrame(update);
