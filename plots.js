@@ -1,7 +1,16 @@
 
 
+/**
+ * Plots a data set to the document
+ * 
+ * @param {array} x Set of labels to show
+ * @param {array} y Data set to show
+ * @param {string} name Label to attach to the data set
+ * @param {string} colour HTML colour to use for the line
+ */
 function plot (x, y, name, colour = 'black') {
 
+    // Create new 2D canvas to hold the results
     let canvas = document.createElement('canvas');
     canvas.width = window.innerWidth * 0.6;
     canvas.height = window.innerHeight * 0.6;
@@ -12,6 +21,7 @@ function plot (x, y, name, colour = 'black') {
     canvas.style.padding = '10px';
     document.body.append(canvas);
 
+    // Plot through Chart.js
     let ctx = canvas.getContext('2d');
     new Chart(ctx, {
         type: 'line',
