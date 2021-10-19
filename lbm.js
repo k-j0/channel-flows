@@ -266,7 +266,7 @@ class D2Q9 {
         this.density = 0;
         this.velocity.set(0, 0);
 
-        // Collision step
+        // Collision step + boundary conditions
         for (let x = 0; x < this.width; ++x) {
             for (let y = 0; y < this.height; ++y) {
 
@@ -275,17 +275,15 @@ class D2Q9 {
 
                 // collision step for the site
                 site.collision(this.omega, this.force);
-            }
-        }
 
-        // Bounce-back boundary condition
-        for (let x = 0; x < this.width; ++x) {
-            for (let y = 0; y < this.height; ++y) {
-
-                // get site to push particles away from
-                let site = this.getSite(x, y);
+                // Compute avg density and velocity across lattice
+                // This isn't required, but we want to display it on screen
+                if(!site.boundary) {
+                    this.density += site.density;
+                    this.velocity.add(site.velocity);
+                }
                 
-                // skip fluid sites
+                // skip fluid sites for bounce-back
                 if (!site.boundary) continue;
 
                 // half-way bounce-back
@@ -294,6 +292,10 @@ class D2Q9 {
                 }
             }
         }
+
+        // Average out these values
+        this.density /= this.width * this.height;
+        this.velocity.multiplyScalar(1.0 / (this.width * this.height));
 
         // Propagation/streaming step
         for (let x = 0; x < this.width; ++x) {
@@ -312,23 +314,8 @@ class D2Q9 {
             }
         }
 
-        // Compute avg density and velocity
-        for (let x = 0; x < this.width; ++x) {
-            for (let y = 0; y < this.height; ++y) {
-
-                let site = this.getSite(x, y);
-                if(site.boundary) continue;
-                this.density += site.density;
-                this.velocity.add(site.velocity);
-
-            }
-        }
-        this.density /= this.width * this.height;
-        this.velocity.multiplyScalar(1.0 / (this.width * this.height));
-
         // t -> t+1
         ++this.t;
-
     }
 
 
