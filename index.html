@@ -53,8 +53,10 @@
             simParams.initialDensity = 1.0;
             simParams.force = new THREE.Vector2(5e-8, 0);
 
+            
             // Init 2D renderer
             let renderer = new Renderer(simParams.width, simParams.height);
+
 
             // Init simulation
             let sim = new D2Q9(simParams);
@@ -62,7 +64,8 @@
             sim.addHorizontalBoundary(0);
             sim.addHorizontalBoundary(simParams.height - 1);
 
-            // Add capture button
+
+            // Add controls
             button('Capture velocity profile', () => sim.plotXVelocity());
             button('Capture occupations', () => sim.plotOccupations());
             let stop = false;
@@ -75,6 +78,7 @@
                 update();
             });
             button('Start over', () => window.location.reload());
+
 
             // Simulation loop
             (update = () => {
