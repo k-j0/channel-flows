@@ -321,6 +321,22 @@ class D2Q9 {
 
 
 
+
+    /**
+     * Returns the maximum x velocity in the channel at the current point in time
+     */
+    getMaxXVelocity () {
+        let m = Number.NEGATIVE_INFINITY;
+        for(let y = 0; y < this.height; ++y) {
+            for (let x = 0; x < this.width; ++x) {
+                let site = this.getSite(x, y);
+                if(site.boundary) continue;
+                if(site.velocity.x > m) m = site.velocity.x;
+            }
+        }
+        return m;
+    }
+
     /**
      * Returns the x velocity as a function of y as discrete data points across the channel
      */
