@@ -45,12 +45,13 @@
     <script>
         (async () => {
 
-            const pulsatile = true;
+            const pulsatile = false;
+            const autoStart = false;
 
             // Simulation parameters
             let simParams = new D2Q9.Parameters();
             simParams.width = 100;
-            simParams.height = 100;
+            simParams.height = 42;
             simParams.kinematicViscosity = 0.5;
             simParams.initialDensity = 1.0;
             if (!pulsatile) {
@@ -75,6 +76,23 @@
 
             // Add controls
             button('Capture velocity profile', () => sim.plotXVelocity());
+            button('Capture velocity profile data', () => {
+                // copy into clipboard as python arrays
+                let data = sim.getXVelocityData();
+                let xVals = 'np.array([';
+                let yVals = '[';
+                for (let i = 0; i < data.length; ++i) {
+                    xVals += data[i][1];
+                    yVals += data[i][0];
+                    if (i < data.length - 1){
+                        xVals += ', ';
+                        yVals += ', ';
+                    }
+                }
+                let str = 't = ' + sim.t + '\ny = ' + yVals + ']\nu_x = ' + xVals + '])\n';
+                navigator.clipboard.writeText(str);
+                sim.plotXVelocity();
+            });
             button('Capture occupations', () => sim.plotOccupations());
             let stop = false;
             button('Pause/resume simulation', () => {
@@ -118,7 +136,8 @@
                 if(stop) return;
 
                 requestAnimationFrame(update);
-            })();
+            });
+            if(autoStart) update();
 
         })();
     </script>

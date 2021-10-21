@@ -320,16 +320,12 @@ class D2Q9 {
     }
 
 
+
     /**
-     * Plots the x velocity as a function of y (across channel)
-     * 
-     * @param {string} colour Colour to use on the chart
+     * Returns the x velocity as a function of y as discrete data points across the channel
      */
-    plotXVelocity (colour = 'black') {
-
-        let labels = [];
+    getXVelocityData () {
         let data = [];
-
         for (let y = 0; y < this.height; ++y) {
             // average through channel
             let velX = 0;
@@ -340,12 +336,24 @@ class D2Q9 {
                 }
             }
             velX /= this.width;
-            labels.push(y);
-            data.push(velX);
+            data.push([y - (this.height - 1) * 0.5, velX]);
         }
 
-        plot(labels, data, 'Velocity across channel at t = ' + this.t, colour);
+        return data;
+    }
 
+    /**
+     * Plots the x velocity as a function of y (across channel)
+     * 
+     * @param {string} colour Colour to use on the chart
+     */
+    plotXVelocity (colour = 'black') {
+
+        let velData = this.getXVelocityData();
+        let labels = velData.map((a) => a[0]);
+        let data = velData.map((a) => a[1]);
+
+        plot(labels, data, 'Velocity across channel at t = ' + this.t, colour);
     }
 
     /**
