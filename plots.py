@@ -11,7 +11,7 @@ import eigen_v
 
 
 # Increase font size on figures
-plt.rcParams.update({'font.size': 14})
+plt.rcParams.update({'font.size': 12})
 
 
 # The following snippet can be obtained by directly pasting the result of the clipboard after clicking 'Capture velocity profile data' in the index.html
@@ -46,7 +46,7 @@ u_x_a = eigen_v.u_x(y_lin, t)
 u_x_inf = 2e-5 - 5e-8 * y_lin ** 2
 
 # Plot data
-plt.figure('t = ' + str(t), figsize=(10, 8))
+plt.figure('t = ' + str(t), figsize=(5.75, 6))
 plt.plot(u_x_a / 2e-5, y_lin, '-', label=r'$u_x$')
 plt.plot(u_x_inf / 2e-5, y_lin, 'k--', label=r'$u_x^{\infty}$', alpha=0.5)
 plt.plot(u_x / 2e-5, y, 'r+', label=r'$u_x^{LBM}$')
