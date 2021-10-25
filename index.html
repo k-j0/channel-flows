@@ -45,13 +45,15 @@
     <script>
         (async () => {
 
-            const pulsatile = false;
-            const autoStart = true;
+            const pulsatile = true;
+            const autoStart = false;
+            const a = 6;
+            const omega = 0.00015;
 
             // Simulation parameters
             let simParams = new D2Q9.Parameters();
             simParams.width = 100;
-            simParams.height = 42;
+            simParams.height = a * 2 + 2;
             simParams.kinematicViscosity = 0.5;
             simParams.initialDensity = 1.0;
             if (!pulsatile) {
@@ -59,7 +61,7 @@
                 simParams.force = (time) => new THREE.Vector2(5e-8, 0);
             } else {
                 // pulsatile (time-dependent) force
-                simParams.force = (time) => new THREE.Vector2(5e-8 * Math.cos(0.01 * time), 0);
+                simParams.force = (time) => new THREE.Vector2(5e-8 * Math.cos(omega * time), 0);
             }
 
 
@@ -90,6 +92,9 @@
                     }
                 }
                 let str = 't = ' + sim.t + '\ny = ' + yVals + ']\nu_x = ' + xVals + '])\n';
+                if (pulsatile) {
+                    str = '# a = ' + a + '\nomega = ' + omega + '\n' + str;
+                }
                 navigator.clipboard.writeText(str);
                 sim.plotXVelocity();
             });
@@ -110,6 +115,26 @@
             button('100 steps', () => {
                 stop = true;
                 for(let i = 0; i < 100; ++i) update();
+            });
+            button('500 steps', () => {
+                stop = true;
+                let i = 0;
+                (stepFwd = () => {
+                    for(let j = 0; j < 10; ++j) update();
+                    i += 10;
+                    if(i >= 500) return;
+                    requestAnimationFrame(stepFwd);
+                })();
+            });
+            button('1000 steps', () => {
+                stop = true;
+                let i = 0;
+                (stepFwd = () => {
+                    for(let j = 0; j < 50; ++j) update();
+                    i += 50;
+                    if(i >= 1000) return;
+                    requestAnimationFrame(stepFwd);
+                })();
             });
             button('Start over', () => window.location.reload());
 

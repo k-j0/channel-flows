@@ -50,6 +50,21 @@ def u_x(y: float, t: float, f_x: float = 5e-8, a: float = 20, nu: float = 0.5, i
     u_x_inf = f_x * (a ** 2 - y ** 2) / (2.0 * nu)
     return u_x_inf + v(y, t, f_x, a, nu, iterations)
 
+def u_x_tilde(y: float, t: float, f_1: float = 2.5e-8, a: float = 10, nu: float = 0.5, omega: float = 0.001):
+    """
+        Computes \tilde{u}_x for periodic poiseuille flow
+        Parameters:
+            y (float): y-position in the channel, between -a..a
+            t (float): time
+            f_1 (float): force term with l=1 (assumed to be the only force term to use)
+            a (float): half-width of the channel
+            nu (float): kinematic fluid viscosity
+            omega (float): oscillatory time scale
+    """
+    gamma_1 = a * np.sqrt(1j * omega / nu)
+    u_1 = f_1 / (1j * omega) * (1 - np.cosh(gamma_1 * y / a) / np.cosh(gamma_1))
+    return u_1 * np.exp(1j * omega * t) + np.conj(u_1) * np.exp(-1j * omega * t)
+
 
 def main():
     t_vals = np.linspace(0, 3000, 500)
