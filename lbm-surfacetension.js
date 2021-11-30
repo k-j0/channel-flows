@@ -93,10 +93,19 @@ class D2Q9 {
         height = 20; // int, number of sites across the lattice vertically
         kinematicViscosity1 = 0.5; // float, kinematic viscosity of the first fluid
         kinematicViscosity2 = 0.5; // float, kinematic viscosity of the second fluid
-        initialDensity = 1.0; // float
         force = (time) => new THREE.Vector2(0, 0); // force to apply to the simulation; function: float time -> THREE.Vector2
         surfaceTension = 0.0; // float, free parameter A
         interfaceWidth = 1.0; // float, beta parameter to define interface width for surface tension calculation
+        initialDistribution = (x, y, r, b) => {
+            const v0 = new THREE.Vector2(0, 0);
+            const d = Math.random(); // random distribution between red and blue
+            const density = 3.0;
+            for(let i = 0; i < 9; ++i) {
+                // each fluid gets half of the original Ni
+                r[i] = D2Q9.NiEq(i, density, v0) * d;
+                b[i] = D2Q9.NiEq(i, density, v0) * (1.0 - d);
+            }
+        }; // function: int x, int y -> float[9][2]
     }; // class Parameters
 
     /**
@@ -171,16 +180,12 @@ class D2Q9 {
         /**
          * Default constructor, initialises the sites with initial density and 0 velocity
          * 
-         * @param {number} density Initial density at the site
+         * @param {int} x The site's x coordinate
+         * @param {int} y The site's y coordinate
+         * @param {function} distributionFn Distribution function to use to fill the site initially
          */
-        constructor(density) {
-            let v0 = new THREE.Vector2(0, 0);
-            let d = Math.random(); // random distribution between red and blue
-            for(let i = 0; i < 9; ++i) {
-                // each fluid gets half of the original Ni
-                this.r[i] = D2Q9.NiEq(i, density, v0) * d;
-                this.b[i] = D2Q9.NiEq(i, density, v0) * (1.0 - d);
-            }
+        constructor(x, y, distributionFn) {
+            distributionFn(x, y, this.r, this.b);
         }
 
         /**
@@ -323,7 +328,7 @@ class D2Q9 {
         this.sites = [];
         for(let x = 0; x < this.width; ++x) {
             for(let y = 0; y < this.height; ++y) {
-                this.sites.push(new D2Q9.Site(params.initialDensity));
+                this.sites.push(new D2Q9.Site(x, y, params.initialDistribution));
             }
         }
 
