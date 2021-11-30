@@ -2,7 +2,7 @@
 /**
  * D2Q9 lattice boltzmann method simulation on rectangular lattice with surface tension
  */
- class D2Q9 {
+class D2Q9 {
 
     /// Simulation constants (always the same across any D2Q9 sim)
     // Order of i is chosen clockwise, to make full bounce-back conditions easy to compute with modulos
@@ -32,7 +32,20 @@
         new THREE.Vector2(0, -1),   // i = 7
         new THREE.Vector2(1, -1)    // i = 8
     ];
-    
+
+
+    /**
+     * Computes the lattice tensor Q' applied to a vector r
+     * Q'_{iαβ} r_α r_β
+     * 
+     * @param {int} i Site direction to apply
+     * @param {THREE.Vector2} r Vector to apply the lattice tensor to
+     * @returns {float} Result of the tensor operation
+     */
+    static Q (i, r) {
+        let ciDotR = D2Q9.C[i].dot(r); // c_i • r
+        return 1.5 * ciDotR * ciDotR - 0.5 * r.dot(r); // 3/2 (c_i • r)^2 - 1/2 r • r
+    }
 
     /**
      * Computes the equilibrium value Ni^eq for a site
@@ -42,11 +55,20 @@
      * @param {THREE.Vector2} velocity The velocity u
      */
     static NiEq (i, density, velocity) {
-        let uDotU = velocity.dot(velocity); // u • u
         let ciDotU = D2Q9.C[i].dot(velocity); // c_i • u
-        let nieq = D2Q9.W[i] * density * (1.0 + 3.0 * ciDotU + 4.5 * ciDotU * ciDotU - 1.5 * uDotU);
+        let nieq = D2Q9.W[i] * density * (1.0 + 3.0 * ciDotU + 3.0 * D2Q9.Q(i, velocity));
         if (nieq < 0) return 0; // would only happen due to numerical imprecisions
         return nieq;
+    }
+
+    /**
+     * Computes the omega value corresponding to a kinematic viscosity to fulfill Navier-Stokes eq requirements (ν = ⅓(ω⁻¹ - ½))
+     * 
+     * @param {number} nu Kinematic viscosity to return omega for 
+     * @returns {number} Omega value corresponding to the kinematic viscosity
+     */
+    static omega (nu) {
+        return 1.0 / (3.0 * nu + 0.5);
     }
 
     /**
@@ -73,6 +95,8 @@
         kinematicViscosity2 = 0.5; // float, kinematic viscosity of the second fluid
         initialDensity = 1.0; // float
         force = (time) => new THREE.Vector2(0, 0); // force to apply to the simulation; function: float time -> THREE.Vector2
+        surfaceTension = 0.0; // float, free parameter A
+        interfaceWidth = 1.0; // float, beta parameter to define interface width for surface tension calculation
     }; // class Parameters
 
     /**
@@ -105,7 +129,7 @@
             0,  // i = 6
             0,  // i = 7
             0   // i = 8
-        ]
+        ];
 
         // temp distributions Ri and Bi after collision step
         rt = [
@@ -137,6 +161,9 @@
         // local velocity u
         velocity = new THREE.Vector2(0, 0);
 
+        // local colour gradient f
+        colourGradient = new THREE.Vector2(0, 0);
+
         
         /**
          * Default constructor, initialises the sites with initial density and 0 velocity
@@ -145,29 +172,44 @@
          */
         constructor(density) {
             let v0 = new THREE.Vector2(0, 0);
+            let d = Math.random(); // random distribution between red and blue
             for(let i = 0; i < 9; ++i) {
                 // each fluid gets half of the original Ni
-                this.r[i] = this.b[i] = D2Q9.NiEq(i, density, v0) * 0.5;
+                this.r[i] = D2Q9.NiEq(i, density, v0) * d;
+                this.b[i] = D2Q9.NiEq(i, density, v0) * (1.0 - d);
             }
+        }
+
+        /**
+         * Returns N_i for the site as sum of B_i and R_i
+         * 
+         * @param {int} i The direction for which to get N_i
+         * @returns {float} Quantity N_i for the site
+         */
+        N(i) {
+            return this.r[i] + this.b[i];
         }
 
         /**
          * Collision step; updates density and velocity based on Ni values
          * Updates ρ & u for the site, then its Ri and Bi vals (into rt/bt instead of r/b)
          * 
-         * @param {float} omega1 The relaxation time inverse omega used for the simulation; for the first coloured fluid
-         * @param {float} omega2                              "                           ; for the second coloured fluid
+         * @param {float} nu1 Kinematic viscosity of the first coloured fluid
+         * @param {float} nu2 Kinematic viscosity of the second coloured fluid
          * @param {THREE.Vector2} force Force to add to the particles
+         * @param {float} a Free parameter used to set the surface tension
+         * @param {float} beta Surface tension interface width
          */
-        collision(omega1, omega2, force) {
+        collision(nu1, nu2, force, a, beta) {
 
             // compute ρ and u
-            // @todo: should this separate out density/velocity per colour or both at once?
             this.density = 0;
             this.velocity.set(0, 0);
+            let n = [0, 0, 0, 0, 0, 0, 0, 0, 0];
             for(let i = 0; i < 9; ++i) {
-                this.density += this.r[i] + this.b[i];
-                this.velocity.addScaledVector(D2Q9.C[i], this.r[i] + this.b[i]); // ρu = sum_i( c_i * N_i )
+                n[i] = this.N(i);
+                this.density += n[i];
+                this.velocity.addScaledVector(D2Q9.C[i], n[i]); // ρu = sum_i( c_i * N_i )
             }
             this.velocity.multiplyScalar(1.0 / this.density); // ρu = sum_i( c_i * N_i ) hence u = sum_i(c_i * N_i ) / ρ
 
@@ -175,14 +217,51 @@
             let F = new THREE.Vector2(force.x, force.y);
             F.x *= this.density;
             F.y *= this.density;
-            for(let i = 0; i < 9; ++i) {
+            let nPrime = [0, 0, 0, 0, 0, 0, 0, 0, 0];
+            let R = 0, B = 0;
+            for (let i = 0; i < 9; ++i) {
+                R += this.r[i];
+                B += this.b[i];
+
+                // compute Ni^{eq}
                 let Nieq = D2Q9.NiEq(i, this.density, this.velocity);
-                // Ni = Ni - omega * (Ni - Ni^eq)
-                // i.e. Ni = lerp(Ni, Ni^eq, omega)
-                // + add forcing term   3 Wi Ci • F   with   F = ρf
-                let forcingTerm = 3.0 * D2Q9.W[i] * D2Q9.C[i].dot(F);
-                this.rt[i] = this.r[i] - omega1 * (this.r[i] - Nieq) + forcingTerm;
-                this.bt[i] = this.b[i] - omega2 * (this.b[i] - Nieq) + forcingTerm;
+
+                // compute relaxation parameter
+                let omega1 = D2Q9.omega(nu1);
+                let omega2 = D2Q9.omega(nu2);
+                let omega;
+                if (this.r[i] == 0) omega = omega2; // only contribution from the blue fluid
+                else if (this.b[i] == 0) omega = omega1; // only contribution from the red fluid
+                else {
+                    let t = this.r[i] / n[i]; // normalized value representing the fraction of R_i compared to the total quantity (R_i + B_i)
+                    omega = omega1 * t + omega2 * (1.0 - t); // lerp between omega2 at t == 0 and omega1 at t == 1
+                }
+
+                // compute N'i
+                // with forcing term   3 Wi Ci • F   with   F = ρf
+                // and colour gradient-based forcing A |f| W_i Q'f/|f|
+                let forcingTerm = 3.0 * D2Q9.W[i] * D2Q9.C[i].dot(F); // external forcing term (outside colour gradient)
+                let fHat = this.colourGradient.clone().normalize(); // forcing from colour gradient
+                nPrime[i] = n[i] - omega * (n[i] - Nieq) + forcingTerm + a * this.colourGradient.length() * D2Q9.W[i] * D2Q9.Q(i, fHat);
+
+                // ensure numerical correctness even with imprecisions
+                if (nPrime[i] < 0) nPrime[i] = 0;
+
+            }
+
+            // Antidiffusive recolouring step
+            for (let i = 0; i < 9; ++i) {
+
+                // compute Nieq(ρ, 0)
+                let Nieq0 = D2Q9.NiEq(i, this.density, new THREE.Vector2(0, 0));
+                let cosPhi = 0; // force cosφ = 0 for c_i = 0
+                let fLen = this.colourGradient.length();
+                if (i > 0 && fLen > 0) {
+                    cosPhi = D2Q9.C[i].dot(this.colourGradient) / fLen;
+                }
+                
+                this.rt[i] = R / (R + B) * nPrime[i] + beta * R * B * Nieq0 * cosPhi / ((R+B)*(R+B))
+                this.bt[i] = B / (R + B) * nPrime[i] - beta * R * B * Nieq0 * cosPhi / ((R+B)*(R+B));
 
                 // fix numerical imprecisions
                 if(this.rt[i] < 0) this.rt[i] = 0;
@@ -209,8 +288,11 @@
     height; // int
 
     /// Simulation parameters
-    omega; // float
+    nu1; // float
+    nu2; // float
     force; // function: float time -> THREE.Vector2
+    a; // float; free parameter controlling surface tension
+    beta; // float; controls surface tension interface width
 
     /// Array of individual lattice sites
     sites; // D2Q9.Site[]
@@ -230,9 +312,11 @@
     constructor(params) {
         this.width = params.width;
         this.height = params.height;
-        this.omega1 = 1.0 / (3.0 * params.kinematicViscosity1 + 0.5); // to fulfill Navier-Stokes eq requirements (ν = ⅓(ω⁻¹ - ½))
-        this.omega2 = 1.0 / (3.0 * params.kinematicViscosity2 + 0.5);
+        this.nu1 = params.kinematicViscosity1;
+        this.nu2 = params.kinematicViscosity2;
         this.force = params.force;
+        this.a = params.surfaceTension;
+        this.beta = params.interfaceWidth;
 
         // init sites
         this.sites = [];
@@ -297,6 +381,28 @@
         this.density = 0;
         this.velocity.set(0, 0);
 
+        // Update colour gradient at each site
+        for (let x = 0; x < this.width; ++x) {
+            for (let y = 0; y < this.height; ++y) {
+
+                // update colour gradient at the site based on neighbours
+                // f = sum_i c_i sum_j R_j(x + c_i) - B_j(x + c_i)
+                let site = this.getSite(x, y);
+                site.colourGradient.set(0, 0);
+                for (let i = 0; i < 9; ++i) {
+                    let dx = D2Q9.C[i].x;
+                    let dy = D2Q9.C[i].y;
+                    for (let j = 0; j < 9; ++j) {
+                        let neighbour = this.getSite(x - dx, y - dy);
+                        let rj = neighbour.r[j];
+                        let bj = neighbour.b[j];
+                        site.colourGradient.add(D2Q9.C[i].clone().multiplyScalar(rj - bj));
+                    }
+                }
+
+            }
+        }
+
         // Collision step + boundary conditions
         let f = this.force(this.t);
         for (let x = 0; x < this.width; ++x) {
@@ -306,7 +412,7 @@
                 let site = this.getSite(x, y);
 
                 // collision step for the site
-                site.collision(this.omega1, this.omega2, f);
+                site.collision(this.nu1, this.nu2, f, this.a, this.beta);
 
                 // Compute avg density and velocity across lattice
                 // This isn't required, but we want to display it on screen
@@ -351,6 +457,12 @@
         // t -> t+1
         ++this.t;
     }
+
+
+
+
+
+    // ---------------------------------------------------------------------------------------------
 
 
 
