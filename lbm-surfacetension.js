@@ -164,6 +164,9 @@ class D2Q9 {
         // local colour gradient f
         colourGradient = new THREE.Vector2(0, 0);
 
+        // local kinematic viscosity ν
+        nu = 0; // float
+
         
         /**
          * Default constructor, initialises the sites with initial density and 0 velocity
@@ -227,15 +230,13 @@ class D2Q9 {
                 let Nieq = D2Q9.NiEq(i, this.density, this.velocity);
 
                 // compute relaxation parameter
-                let omega1 = D2Q9.omega(nu1);
-                let omega2 = D2Q9.omega(nu2);
-                let omega;
-                if (this.r[i] == 0) omega = omega2; // only contribution from the blue fluid
-                else if (this.b[i] == 0) omega = omega1; // only contribution from the red fluid
+                if (this.r[i] == 0) this.nu = nu2; // only contribution from the blue fluid
+                else if (this.b[i] == 0) this.nu = nu1; // only contribution from the red fluid
                 else {
                     let t = this.r[i] / n[i]; // normalized value representing the fraction of R_i compared to the total quantity (R_i + B_i)
-                    omega = omega1 * t + omega2 * (1.0 - t); // lerp between omega2 at t == 0 and omega1 at t == 1
+                    this.nu = nu1 * t + nu2 * (1.0 - t); // lerp between nu2 at t == 0 and nu1 at t == 1
                 }
+                let omega = D2Q9.omega(this.nu);
 
                 // compute N'i
                 // with forcing term   3 Wi Ci • F   with   F = ρf
