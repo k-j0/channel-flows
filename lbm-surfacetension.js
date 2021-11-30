@@ -1,6 +1,6 @@
 
 /**
- * D2Q9 lattice boltzmann method simulation on rectangular lattice
+ * D2Q9 lattice boltzmann method simulation on rectangular lattice with surface tension
  */
  class D2Q9 {
 
@@ -69,7 +69,8 @@
     static Parameters = class {
         width = 20; // int, number of sites across the lattice horizontally
         height = 20; // int, number of sites across the lattice vertically
-        kinematicViscosity = 0.5; // float
+        kinematicViscosity1 = 0.5; // float, kinematic viscosity of the first fluid
+        kinematicViscosity2 = 0.5; // float, kinematic viscosity of the second fluid
         initialDensity = 1.0; // float
         force = (time) => new THREE.Vector2(0, 0); // force to apply to the simulation; function: float time -> THREE.Vector2
     }; // class Parameters
@@ -82,8 +83,8 @@
         // whether the site is solid (boundary site); particles that end up on solid sites will bounce back
         boundary = false;
 
-        // distributions Ni for 0 <= i < 9
-        n = [
+        // distributions Ri and Bi for 0 <= i < 9
+        r = [
             0,  // i = 0
             0,  // i = 1
             0,  // i = 2
@@ -94,9 +95,31 @@
             0,  // i = 7
             0   // i = 8
         ];
+        b = [
+            0,  // i = 0
+            0,  // i = 1
+            0,  // i = 2
+            0,  // i = 3
+            0,  // i = 4
+            0,  // i = 5
+            0,  // i = 6
+            0,  // i = 7
+            0   // i = 8
+        ]
 
-        // temp distributions Ni after collision step
-        nt = [
+        // temp distributions Ri and Bi after collision step
+        rt = [
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0
+        ];
+        bt = [
             0,
             0,
             0,
@@ -123,25 +146,28 @@
         constructor(density) {
             let v0 = new THREE.Vector2(0, 0);
             for(let i = 0; i < 9; ++i) {
-                this.n[i] = D2Q9.NiEq(i, density, v0);
+                // each fluid gets half of the original Ni
+                this.r[i] = this.b[i] = D2Q9.NiEq(i, density, v0) * 0.5;
             }
         }
 
         /**
          * Collision step; updates density and velocity based on Ni values
-         * Updates ρ & u for the site, then its Ni vals (into nt instead of n)
+         * Updates ρ & u for the site, then its Ri and Bi vals (into rt/bt instead of r/b)
          * 
-         * @param {float} omega The relaxation time inverse omega used for the simulation
+         * @param {float} omega1 The relaxation time inverse omega used for the simulation; for the first coloured fluid
+         * @param {float} omega2                              "                           ; for the second coloured fluid
          * @param {THREE.Vector2} force Force to add to the particles
          */
-        collision(omega, force) {
+        collision(omega1, omega2, force) {
 
             // compute ρ and u
+            // @todo: should this separate out density/velocity per colour or both at once?
             this.density = 0;
             this.velocity.set(0, 0);
             for(let i = 0; i < 9; ++i) {
-                this.density += this.n[i];
-                this.velocity.addScaledVector(D2Q9.C[i], this.n[i]); // ρu = sum_i( c_i * N_i )
+                this.density += this.r[i] + this.b[i];
+                this.velocity.addScaledVector(D2Q9.C[i], this.r[i] + this.b[i]); // ρu = sum_i( c_i * N_i )
             }
             this.velocity.multiplyScalar(1.0 / this.density); // ρu = sum_i( c_i * N_i ) hence u = sum_i(c_i * N_i ) / ρ
 
@@ -155,8 +181,12 @@
                 // i.e. Ni = lerp(Ni, Ni^eq, omega)
                 // + add forcing term   3 Wi Ci • F   with   F = ρf
                 let forcingTerm = 3.0 * D2Q9.W[i] * D2Q9.C[i].dot(F);
-                this.nt[i] = this.n[i] - omega * (this.n[i] - Nieq) + forcingTerm;
-                if(this.nt[i] < 0) this.nt[i] = 0; // only due to numerical imprecisions
+                this.rt[i] = this.r[i] - omega1 * (this.r[i] - Nieq) + forcingTerm;
+                this.bt[i] = this.b[i] - omega2 * (this.b[i] - Nieq) + forcingTerm;
+
+                // fix numerical imprecisions
+                if(this.rt[i] < 0) this.rt[i] = 0;
+                if(this.bt[i] < 0) this.bt[i] = 0;
             }
         }
 
@@ -166,7 +196,7 @@
         setBoundary() {
             this.boundary = true;
             for (let i = 0; i < 9; ++i) {
-                this.n[i] = 0;
+                this.r[i] = this.b[i] = 0;
             }
         }
 
@@ -200,7 +230,8 @@
     constructor(params) {
         this.width = params.width;
         this.height = params.height;
-        this.omega = 1.0 / (3.0 * params.kinematicViscosity + 0.5); // to fulfill Navier-Stokes eq requirements (ν = ⅓(ω⁻¹ - ½))
+        this.omega1 = 1.0 / (3.0 * params.kinematicViscosity1 + 0.5); // to fulfill Navier-Stokes eq requirements (ν = ⅓(ω⁻¹ - ½))
+        this.omega2 = 1.0 / (3.0 * params.kinematicViscosity2 + 0.5);
         this.force = params.force;
 
         // init sites
@@ -275,7 +306,7 @@
                 let site = this.getSite(x, y);
 
                 // collision step for the site
-                site.collision(this.omega, f);
+                site.collision(this.omega1, this.omega2, f);
 
                 // Compute avg density and velocity across lattice
                 // This isn't required, but we want to display it on screen
@@ -288,7 +319,8 @@
                 // skip fluid sites for bounce-back
                 if (site.boundary) {
                     for (let i = 0; i < 9; ++i) {
-                        site.nt[i] = site.n[D2Q9.opposite(i)];
+                        site.rt[i] = site.r[D2Q9.opposite(i)];
+                        site.bt[i] = site.b[D2Q9.opposite(i)];
                     }
                 }
             }
@@ -309,7 +341,8 @@
                 for (let i = 0; i < 9; ++i) {
                     let dx = D2Q9.C[i].x;
                     let dy = D2Q9.C[i].y;
-                    site.n[i] = this.getSite(x + dx, y + dy).nt[i];
+                    site.r[i] = this.getSite(x + dx, y + dy).rt[i];
+                    site.b[i] = this.getSite(x + dx, y + dy).bt[i];
                 }
 
             }

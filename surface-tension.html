@@ -51,8 +51,9 @@
             let simParams = new D2Q9.Parameters();
             simParams.width = 100;
             simParams.height = 100;
-            simParams.kinematicViscosity = 0.5;
-            simParams.initialDensity = 1.0;
+            simParams.kinematicViscosity1 = 0.25;
+            simParams.kinematicViscosity2 = 0.07;
+            simParams.initialDensity = 3.0;
             simParams.force = (time) => new THREE.Vector2(5e-8, 0);
 
 
@@ -69,6 +70,9 @@
 
             // Simulation loop
             let stop = false;
+            const black = new THREE.Color('black');
+            const red = new THREE.Color('red');
+            const blue = new THREE.Color('blue');
             (update = () => {
 
                 // further the sim
@@ -78,10 +82,16 @@
                 document.getElementById('stats').innerHTML = 't = ' + sim.t;
 
                 // update texture with site densities or velocities
-                renderer.render((x, y) => {
+                renderer.renderRgb((x, y) => {
                     let site = sim.getSite(x, y);
-                    if(site.boundary) return 0;
-                    return Math.abs(site.velocity.x);
+                    if(site.boundary) return black;
+                    let r = 0;
+                    let b = 0;
+                    for (let i = 0; i < 9; ++i) {
+                        r += site.r[i];
+                        b += site.b[i];
+                    }
+                    return red.clone().lerp(blue, b/(r + b));
                 });
 
                 if(stop) return;
