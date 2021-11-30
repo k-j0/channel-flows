@@ -1,0 +1,170 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Lattice Boltzmann simulations</title>
+
+    <!-- Include Three.js -->
+    <script src='https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js'></script>
+
+    <!-- Include Chart.js -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@3.5.1/dist/chart.min.js"></script>
+
+    <!-- Include utilities  -->
+    <script src='utils/plots.js'></script>
+    <script src='utils/renderer.js'></script>
+    <script src='utils/ui.js'></script>
+
+    <!-- Include lattice boltzmann source -->
+    <script src='lbm.js'></script>
+    
+    <style>
+        * {
+            font-family: sans-serif;
+        }
+        body {
+            margin: 0;
+            padding: 0;
+            border: none;
+            background: grey;
+        }
+        span {
+            position: fixed;
+            z-index: 99;
+            color: white;
+            text-shadow: 1px 1px 0 black, -1px 1px 0 black, -1px -1px 0 black, 1px -1px 0 black, 1px 0 0 black, -1px 0 0 black, 0 1px 0 black, 0 -1px 0 black;
+            left: 10px;
+            top: 10px;
+        }
+    </style>
+</head>
+<body>
+    <span id='stats'></span>
+    <script>
+        (async () => {
+
+            const pulsatile = true;
+            const autoStart = true;
+            const a = 20;
+            const omega = 0.015;
+
+            // Simulation parameters
+            let simParams = new D2Q9.Parameters();
+            simParams.width = 100;
+            simParams.height = a * 2 + 2;
+            simParams.kinematicViscosity = 0.5;
+            simParams.initialDensity = 1.0;
+            if (!pulsatile) {
+                // constant acceleration
+                simParams.force = (time) => new THREE.Vector2(5e-8, 0);
+            } else {
+                // pulsatile (time-dependent) force
+                simParams.force = (time) => new THREE.Vector2(5e-8 * Math.cos(omega * time), 0);
+            }
+
+
+            // Init 2D renderer
+            let renderer = new Renderer(simParams.width, simParams.height);
+
+
+            // Init simulation
+            let sim = new D2Q9(simParams);
+            // Top and bottom boundaries
+            sim.addHorizontalBoundary(0);
+            sim.addHorizontalBoundary(simParams.height - 1);
+
+
+            // Add controls
+            button('Capture velocity profile', () => sim.plotXVelocity());
+            button('Capture velocity profile data', () => {
+                // copy into clipboard as python arrays
+                let data = sim.getXVelocityData();
+                let xVals = 'np.array([';
+                let yVals = '[';
+                for (let i = 0; i < data.length; ++i) {
+                    xVals += data[i][1];
+                    yVals += data[i][0];
+                    if (i < data.length - 1){
+                        xVals += ', ';
+                        yVals += ', ';
+                    }
+                }
+                let str = 't = ' + sim.t + '\ny = ' + yVals + ']\nu_x = ' + xVals + '])\n';
+                if (pulsatile) {
+                    str = '# a = ' + a + '\nomega = ' + omega + '\n' + str;
+                }
+                navigator.clipboard.writeText(str);
+                sim.plotXVelocity();
+            });
+            button('Capture occupations', () => sim.plotOccupations());
+            let stop = false;
+            button('Pause/resume simulation', () => {
+                stop = !stop;
+                update();
+            });
+            button('Single step', () => {
+                stop = true;
+                update();
+            });
+            button('10 steps', () => {
+                stop = true;
+                for(let i = 0; i < 10; ++i) update();
+            });
+            button('100 steps', () => {
+                stop = true;
+                for(let i = 0; i < 100; ++i) update();
+            });
+            button('500 steps', () => {
+                stop = true;
+                let i = 0;
+                (stepFwd = () => {
+                    for(let j = 0; j < 10; ++j) update();
+                    i += 10;
+                    if(i >= 500) return;
+                    requestAnimationFrame(stepFwd);
+                })();
+            });
+            button('1000 steps', () => {
+                stop = true;
+                let i = 0;
+                (stepFwd = () => {
+                    for(let j = 0; j < 50; ++j) update();
+                    i += 50;
+                    if(i >= 1000) return;
+                    requestAnimationFrame(stepFwd);
+                })();
+            });
+            button('Start over', () => window.location.reload());
+
+
+            // Simulation loop
+            (update = () => {
+
+                // further the sim
+                sim.step();
+
+                // update on-screen UI
+                document.getElementById('stats').innerHTML =
+                        't = ' + sim.t + '<br/>' +
+                        'ρ = ' + sim.density.toFixed(2) + '<br/>' +
+                        'u = (' + sim.velocity.x.toFixed(7) + ', ' + sim.velocity.y.toFixed(7) + ')';
+
+                // update texture with site densities or velocities
+                renderer.render((x, y) => {
+                    let site = sim.getSite(x, y);
+                    if(site.boundary) return 0;
+                    return Math.abs(site.velocity.x);
+                });
+
+                if(stop) return;
+
+                requestAnimationFrame(update);
+            });
+            if(autoStart) update();
+
+        })();
+    </script>
+</body>
+</html>

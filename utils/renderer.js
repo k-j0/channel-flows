@@ -14,15 +14,17 @@ class Renderer {
      * 
      * @param {int} texWidth The width of the texture to display
      * @param {int} texHeight The height of the texture to display
+     * @param {float} size Display size as a factor of the total window width
+     * @param {float} aspectRatio Display aspect ratio as a factor of width (height = width * aspectRatio)
      */
-    constructor(texWidth, texHeight) {
+    constructor(texWidth, texHeight, size = 0.9, aspectRatio = 0.2) {
 
         this.width = texWidth;
         this.height = texHeight;
 
         // Initialise Three.js renderer
-        const width = window.innerWidth * 0.9;
-        const height = width * 0.2;
+        const width = window.innerWidth * size;
+        const height = width * aspectRatio;
         const renderer = new THREE.WebGLRenderer({ antialias: true });
         renderer.setSize(width, height);
         renderer.domElement.style.margin = '20px auto';
@@ -49,7 +51,7 @@ class Renderer {
     }
 
     /**
-     * Refreshes the render by updating the texture
+     * Refreshes the render by updating the texture with greyscale scalar values
      */
     render(updateCallback) {
         // Gather values to show
@@ -85,6 +87,24 @@ class Renderer {
                 this.data[idx] = col.r * 255;
                 this.data[idx+1] = col.g * 255;
                 this.data[idx+2] = col.b * 255;
+            }
+        }
+        this.refresh();
+    }
+
+    /**
+     * Refreshes the render by updating the texture with RGB colours
+     */
+     renderRgb(updateCallback) {
+        // Gather values to show and update buffer
+        for(let x = 0; x < this.width; ++x) {
+            for(let y = 0; y < this.height; ++y) {
+                let col = updateCallback(x, y);
+                let idx = (x + y * this.width) * 3;
+                // apply colour map
+                this.data[idx] = Math.min(Math.max(col.r * 255, 0), 255);
+                this.data[idx+1] = Math.min(Math.max(col.g * 255, 0), 255);
+                this.data[idx+2] = Math.min(Math.max(col.b * 255, 0), 255);
             }
         }
         this.refresh();
