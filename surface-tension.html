@@ -55,6 +55,18 @@
             simParams.kinematicViscosity2 = 0.07;
             simParams.surfaceTension = 2e-4;
             simParams.interfaceWidth = 1.0;
+            simParams.force = (t) => new THREE.Vector2(-0.0018, 0);
+            simParams.initialDistribution = (x, y, r, b) => {
+                const density = 3.0;
+                const perturbation = 0.01;
+                const v0 = new THREE.Vector2(Math.random() * 2 * perturbation - perturbation, Math.random() * 2 * perturbation - perturbation);
+                const d = (x < simParams.width / 2 ? 0 : 1);
+                for(let i = 0; i < 9; ++i) {
+                    // each fluid gets a part of the original Ni depending on the distribution d
+                    r[i] = D2Q9.NiEq(i, density, v0) * d;
+                    b[i] = D2Q9.NiEq(i, density, v0) * (1.0 - d);
+                }
+            };
 
 
             // Init 2D renderer
@@ -63,6 +75,8 @@
 
             // Init simulation
             let sim = new D2Q9(simParams);
+            //sim.addVerticalBoundary(0);
+            //sim.addVerticalBoundary(simParams.width - 1);
 
 
             // Simulation loop

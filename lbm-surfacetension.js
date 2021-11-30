@@ -101,7 +101,7 @@ class D2Q9 {
             const v0 = new THREE.Vector2(0, 0);
             const d = Math.random(); // random distribution between red and blue
             for(let i = 0; i < 9; ++i) {
-                // each fluid gets half of the original Ni
+                // each fluid gets a part of the original Ni depending on the distribution d
                 r[i] = D2Q9.NiEq(i, density, v0) * d;
                 b[i] = D2Q9.NiEq(i, density, v0) * (1.0 - d);
             }
@@ -341,6 +341,17 @@ class D2Q9 {
      */
     addHorizontalBoundary(y) {
         for(let x = 0; x < this.width; ++x) {
+            this.getSite(x, y).setBoundary();
+        }
+    }
+
+    /**
+     * Adds a vertical bounce-back boundary for sites at x
+     * 
+     * @param {int} x X-coordinate of sites to make into boundaries
+     */
+     addVerticalBoundary(x) {
+        for(let y = 0; y < this.height; ++y) {
             this.getSite(x, y).setBoundary();
         }
     }
