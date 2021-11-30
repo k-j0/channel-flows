@@ -97,15 +97,15 @@ class D2Q9 {
         surfaceTension = 0.0; // float, free parameter A
         interfaceWidth = 1.0; // float, beta parameter to define interface width for surface tension calculation
         initialDistribution = (x, y, r, b) => {
+            const density = 3.0;
             const v0 = new THREE.Vector2(0, 0);
             const d = Math.random(); // random distribution between red and blue
-            const density = 3.0;
             for(let i = 0; i < 9; ++i) {
                 // each fluid gets half of the original Ni
                 r[i] = D2Q9.NiEq(i, density, v0) * d;
                 b[i] = D2Q9.NiEq(i, density, v0) * (1.0 - d);
             }
-        }; // function: int x, int y -> float[9][2]
+        }; // function: int x, int y, float[9] r, float[9] b
     }; // class Parameters
 
     /**
