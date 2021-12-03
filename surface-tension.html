@@ -184,6 +184,25 @@
                 });
             });
 
+            button('Capture red occupancy', () => sim.plotReds());
+            button('Capture red occupancy data', () => {
+                // copy into clipboard as python arrays
+                let data = sim.getRedAmountData();
+                let xVals = '[';
+                let redVals = 'np.array([';
+                for (let i = 0; i < data.length; ++i) {
+                    xVals += data[i][0];
+                    redVals += data[i][1];
+                    if (i < data.length - 1){
+                        xVals += ', ';
+                        redVals += ', ';
+                    }
+                }
+                let str = '# Red occupancy profile at t = ' + sim.t + ', beta = ' + simParams.interfaceWidth + '\nr' + parseInt(simParams.interfaceWidth*100) + ' = ' + redVals + '])\n';
+                navigator.clipboard.writeText(str);
+                sim.plotReds();
+            });
+
         })();
     </script>
 </body>

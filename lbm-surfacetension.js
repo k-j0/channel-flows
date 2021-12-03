@@ -577,4 +577,35 @@ class D2Q9 {
         plot(labels, data, 'Occupation average across lattice at t = ' + this.t, colour);
     }
 
+    /**
+     * Returns the amount of reds across the center of the lattice
+     */
+    getRedAmountData () {
+        let data = [];
+        const y = this.height / 2;
+        for (let x = 0; x < this.width; ++x) {
+            let r = 0;
+            for (let i = 0; i < 9; ++i) {
+                r += this.getSite(x, y).r[i];
+            }
+            data.push([x, r]);
+        }
+        return data;
+    }
+
+    /**
+     * Plots the R(x) across the center of the lattice
+     * 
+     * @param {string} colour Colour to use on the chart
+     */
+    plotReds (colour = 'red') {
+
+        let redData = this.getRedAmountData();
+        let labels = redData.map((a) => a[0]);
+        let data = redData.map((a) => a[1]);
+
+        plot(labels, data, 'Red quantity across lattice centre at t = ' + this.t, colour);
+        
+    }
+
 }; // class D2Q9
