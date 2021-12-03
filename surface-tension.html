@@ -45,7 +45,9 @@
     <script>
         (async () => {
 
-            const autoStart = true;
+            const autoStart = false;
+            const renderAdditive = false;
+            const R = 20; // radius of curvature, when creating a central droplet
 
             // Simulation parameters
             let simParams = new D2Q9.Parameters();
@@ -55,16 +57,17 @@
             simParams.kinematicViscosity2 = 0.07;
             simParams.surfaceTension = 2e-4;
             simParams.interfaceWidth = 1.0;
-            simParams.force = (t) => new THREE.Vector2(-0.0018, 0);
+            simParams.force = (t) => new THREE.Vector2(0, 0);//-0.0018, 0);
             simParams.initialDistribution = (x, y, r, b) => {
                 const density = 3.0;
-                const perturbation = 0.01;
+                const perturbation = 0.0;
                 const v0 = new THREE.Vector2(Math.random() * 2 * perturbation - perturbation, Math.random() * 2 * perturbation - perturbation);
-                const d = (x < simParams.width / 2 ? 0 : 1);
+                const d = (new THREE.Vector2(x - simParams.width/2, y - simParams.height/2)).length() < R ? 1 : 0; // central droplet
+                //const d = (x < simParams.width / 2 ? 0 : 1);
                 for(let i = 0; i < 9; ++i) {
                     // each fluid gets a part of the original Ni depending on the distribution d
-                    r[i] = D2Q9.NiEq(i, density, v0) * d;
-                    b[i] = D2Q9.NiEq(i, density, v0) * (1.0 - d);
+                    r[i] = Math.max(0, D2Q9.NiEq(i, density, v0) * d);
+                    b[i] = Math.max(0, D2Q9.NiEq(i, density, v0) * (1.0 - d));
                 }
             };
 
@@ -102,8 +105,11 @@
                         r += site.r[i];
                         b += site.b[i];
                     }
-                    let t = b/(r + b);
-                    return red.clone().lerp(blue, t);
+                    // two different ways to visualize the results in real-time
+                    if(renderAdditive)
+                        return black.clone().add(red.clone().multiplyScalar(r * 0.25)).add(blue.clone().multiplyScalar(b * 0.25));
+                    else
+                        return red.clone().lerp(blue, b/(r + b));
                 });
 
                 if(stop) return;
@@ -156,6 +162,27 @@
                 })();
             });
             button('Start over', () => window.location.reload());
+
+            document.body.append(document.createElement('hr'));
+
+            button('Record surface tension between center and side over 750 steps', () => {
+                const frames = 750;
+                let sigmas = [];
+                for (let i = 0; i < frames; ++i) {
+                    sim.step();
+                    let sigma = sim.getSurfaceTension(R, simParams.width/2, simParams.height/2, simParams.width/2-2*R, simParams.height/2);
+                    sigmas.push(sigma);
+                }
+                let div = document.createElement('div');
+                div.style.padding = '10px';
+                div.style.textAlign = 'center';
+                div.innerHTML = 't in [' + (sim.t-frames) + ', ' + sim.t + '] | σ = [' + sigmas[0] + ', ..., ' + sigmas[sigmas.length-1] + ']';
+                document.body.appendChild(div);
+                button('Copy sigmas to clipboard', () => {
+                    let str = '# t in [' + (sim.t-frames) + ', ' + sim.t + '], R = ' + R + '\nsigmas' + R + ' = [' + sigmas + ']';
+                    navigator.clipboard.writeText(str);
+                });
+            });
 
         })();
     </script>

@@ -350,7 +350,7 @@ class D2Q9 {
      * 
      * @param {int} x X-coordinate of sites to make into boundaries
      */
-     addVerticalBoundary(x) {
+    addVerticalBoundary(x) {
         for(let y = 0; y < this.height; ++y) {
             this.getSite(x, y).setBoundary();
         }
@@ -518,6 +518,20 @@ class D2Q9 {
         }
 
         return data;
+    }
+
+    /**
+     * Returns the surface tension free-energy between two lattice sites as σ = R/6 ∆ρ
+     * 
+     * @param {float} curvature Radius of curvature R
+     * @param {int} x1 X-position of the first site
+     * @param {int} y1 Y-position of the first site
+     * @param {int} x2 X-position of the second site
+     * @param {int} y2 Y-position of the second site
+     */
+    getSurfaceTension (curvature, x1, y1, x2, y2) {
+        let deltaRho = Math.abs(this.getSite(x2, y2).density - this.getSite(x1, y1).density);
+        return curvature * deltaRho / 6.0;
     }
 
     /**
