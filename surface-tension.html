@@ -51,19 +51,19 @@
 
             // Simulation parameters
             let simParams = new D2Q9.Parameters();
-            simParams.width = 100;
-            simParams.height = 100;
+            simParams.width = 300;
+            simParams.height = 300;
             simParams.kinematicViscosity1 = 0.25;
             simParams.kinematicViscosity2 = 0.07;
             simParams.surfaceTension = 2e-4;
             simParams.interfaceWidth = 1.0;
-            simParams.force = (t) => new THREE.Vector2(0, 0);//-0.0018, 0);
+            simParams.force = (t) => new THREE.Vector2(-0.0018, 0);
             simParams.initialDistribution = (x, y, r, b) => {
                 const density = 3.0;
-                const perturbation = 0.0;
+                const perturbation = 0.01;
                 const v0 = new THREE.Vector2(Math.random() * 2 * perturbation - perturbation, Math.random() * 2 * perturbation - perturbation);
-                const d = (new THREE.Vector2(x - simParams.width/2, y - simParams.height/2)).length() < R ? 1 : 0; // central droplet
-                //const d = (x < simParams.width / 2 ? 0 : 1);
+                //const d = (new THREE.Vector2(x - simParams.width/2, y - simParams.height/2)).length() < R ? 1 : 0; // central droplet
+                const d = (x < simParams.width / 2 ? 0 : 1);
                 for(let i = 0; i < 9; ++i) {
                     // each fluid gets a part of the original Ni depending on the distribution d
                     r[i] = Math.max(0, D2Q9.NiEq(i, density, v0) * d);
@@ -93,7 +93,7 @@
                 sim.step();
 
                 // update on-screen UI
-                document.getElementById('stats').innerHTML = 't = ' + sim.t;
+                document.getElementById('stats').innerHTML = 't = ' + sim.t + '<br>u<sub>x</sub> = ' + sim.velocity.x;
 
                 // update texture with site densities or velocities
                 renderer.renderRgb((x, y) => {

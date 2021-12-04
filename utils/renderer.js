@@ -25,7 +25,7 @@ class Renderer {
         // Initialise Three.js renderer
         const width = window.innerWidth * size;
         const height = width * aspectRatio;
-        const renderer = new THREE.WebGLRenderer({ antialias: true });
+        const renderer = new THREE.WebGLRenderer({ antialias: true, preserveDrawingBuffer: true });
         renderer.setSize(width, height);
         renderer.domElement.style.margin = '20px auto';
         document.body.appendChild(renderer.domElement);
