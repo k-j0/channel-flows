@@ -530,7 +530,7 @@ class D2Q9 {
      * @param {int} y2 Y-position of the second site
      */
     getSurfaceTension (curvature, x1, y1, x2, y2) {
-        let deltaRho = Math.abs(this.getSite(x2, y2).density - this.getSite(x1, y1).density);
+        let deltaRho = this.getSite(x2, y2).density - this.getSite(x1, y1).density;
         return curvature * deltaRho / 6.0;
     }
 

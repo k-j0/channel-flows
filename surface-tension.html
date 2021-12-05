@@ -51,8 +51,8 @@
 
             // Simulation parameters
             let simParams = new D2Q9.Parameters();
-            simParams.width = 300;
-            simParams.height = 300;
+            simParams.width = 150;
+            simParams.height = 150;
             simParams.kinematicViscosity1 = 0.25;
             simParams.kinematicViscosity2 = 0.07;
             simParams.surfaceTension = 2e-4;
@@ -140,6 +140,10 @@
             button('100 steps', () => {
                 stop = true;
                 for(let i = 0; i < 100; ++i) update();
+            });
+            button('360 steps', () => {
+                stop = true;
+                for(let i = 0; i < 360; ++i) update();
             });
             button('500 steps', () => {
                 stop = true;
